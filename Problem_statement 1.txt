@@ -1,0 +1,752 @@
+Forecast the CocaCola prices and Airlines Passengers data set. Prepare a document for each model explaining 
+how many dummy variables you have created and RMSE value for each model. Finally which model you will use for 
+Forecasting.
+
+
+Ans-Airlines
+library(readxl)
+
+Airlines<-read_excel(file.choose()) # read the Airlines data
+View(Airlines) # Seasonality 12 months 
+windows()
+plot(Airlines$Passengers,type="o")
+
+
+# So creating 12 dummy variables 
+
+X<- data.frame(outer(rep(month.abb,length = 96), month.abb,"==") + 0 )# Creating dummies for 12 months
+# View(X)
+
+colnames(X)<-month.abb # Assigning month names 
+# View(X)
+AirlinesData<-cbind(Airlines,X)
+View(AirlinesData)
+colnames(AirlinesData)
+##  [1] "Month"      "Passengers" "Jan"        "Feb"        "Mar"       
+##  [6] "Apr"        "May"        "Jun"        "Jul"        "Aug"       
+## [11] "Sep"        "Oct"        "Nov"        "Dec"
+AirlinesData["t"]<- 1:96
+View(AirlinesData)
+AirlinesData["log_Passenger"]<-log(AirlinesData["Passengers"])
+AirlinesData["t_square"]<-AirlinesData["t"]*AirlinesData["t"]
+attach(AirlinesData)
+
+train<-AirlinesData[1:84,]
+
+test<-AirlinesData[85:96,]
+
+########################### LINEAR MODEL #############################
+
+linear_model<-lm(Passengers~t,data=train)
+summary(linear_model)
+## 
+## Call:
+## lm(formula = Passengers ~ t, data = train)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -55.419 -17.202  -0.705  16.546  88.438 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept) 106.2708     5.9287   17.93   <2e-16 ***
+## t             2.1429     0.1212   17.69   <2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 26.93 on 82 degrees of freedom
+## Multiple R-squared:  0.7923, Adjusted R-squared:  0.7898 
+## F-statistic: 312.8 on 1 and 82 DF,  p-value: < 2.2e-16
+linear_pred<-data.frame(predict(linear_model,interval='predict',newdata =test))
+View(linear_pred)
+rmse_linear<-sqrt(mean((test$Passengers-linear_pred$fit)^2,na.rm = T))
+rmse_linear # 53.19924
+## [1] 53.19924
+######################### Exponential #################################
+
+expo_model<-lm(log_Passenger~t,data=train)
+summary(expo_model)
+## 
+## Call:
+## lm(formula = log_Passenger ~ t, data = train)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.28906 -0.07775 -0.01528  0.07901  0.25104 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept) 4.770262   0.027693  172.26   <2e-16 ***
+## t           0.011087   0.000566   19.59   <2e-16 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.1258 on 82 degrees of freedom
+## Multiple R-squared:  0.8239, Adjusted R-squared:  0.8218 
+## F-statistic: 383.7 on 1 and 82 DF,  p-value: < 2.2e-16
+expo_pred<-data.frame(predict(expo_model,interval='predict',newdata=test))
+rmse_expo<-sqrt(mean((test$Passengers-exp(expo_pred$fit))^2,na.rm = T))
+rmse_expo # 46.05736  and Adjusted R2 - 82.18 %
+## [1] 46.05736
+######################### Quadratic ####################################
+
+Quad_model<-lm(Passengers~t+t_square,data=train)
+summary(Quad_model)
+## 
+## Call:
+## lm(formula = Passengers ~ t + t_square, data = train)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -56.985 -15.652  -3.801  16.360  83.241 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(>|t|)    
+## (Intercept) 1.148e+02  8.996e+00  12.758  < 2e-16 ***
+## t           1.549e+00  4.885e-01   3.172  0.00214 ** 
+## t_square    6.982e-03  5.569e-03   1.254  0.21350    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 26.83 on 81 degrees of freedom
+## Multiple R-squared:  0.7963, Adjusted R-squared:  0.7912 
+## F-statistic: 158.3 on 2 and 81 DF,  p-value: < 2.2e-16
+Quad_pred<-data.frame(predict(Quad_model,interval='predict',newdata=test))
+rmse_Quad<-sqrt(mean((test$Passengers-Quad_pred$fit)^2,na.rm=T))
+rmse_Quad # 48.05189 and Adjusted R2 - 79.12%
+## [1] 48.05189
+######################### Additive Seasonality #########################
+
+sea_add_model<-lm(Passengers~Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov,data=train)
+summary(sea_add_model)
+## 
+## Call:
+## lm(formula = Passengers ~ Jan + Feb + Mar + Apr + May + Jun + 
+##     Jul + Aug + Sep + Oct + Nov, data = train)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -91.571 -51.393   2.143  38.464 124.429 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)  189.429     21.746   8.711 7.21e-13 ***
+## Jan          -20.143     30.753  -0.655    0.515    
+## Feb          -19.286     30.753  -0.627    0.533    
+## Mar            8.000     30.753   0.260    0.796    
+## Apr            1.857     30.753   0.060    0.952    
+## May            1.143     30.753   0.037    0.970    
+## Jun           25.143     30.753   0.818    0.416    
+## Jul           50.143     30.753   1.630    0.107    
+## Aug           49.286     30.753   1.603    0.113    
+## Sep           24.143     30.753   0.785    0.435    
+## Oct           -1.000     30.753  -0.033    0.974    
+## Nov          -24.286     30.753  -0.790    0.432    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 57.53 on 72 degrees of freedom
+## Multiple R-squared:  0.1674, Adjusted R-squared:  0.04015 
+## F-statistic: 1.316 on 11 and 72 DF,  p-value: 0.2337
+sea_add_pred<-data.frame(predict(sea_add_model,newdata=test,interval='predict'))
+rmse_sea_add<-sqrt(mean((test$Passengers-sea_add_pred$fit)^2,na.rm = T))
+rmse_sea_add # 132.8198
+## [1] 132.8198
+######################## Additive Seasonality with Linear #################
+
+Add_sea_Linear_model<-lm(Passengers~t+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov,data=train)
+summary(Add_sea_Linear_model)
+## 
+## Call:
+## lm(formula = Passengers ~ t + Jan + Feb + Mar + Apr + May + Jun + 
+##     Jul + Aug + Sep + Oct + Nov, data = train)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -33.952  -8.679  -0.286   6.976  46.714 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)  85.80952    5.87255  14.612  < 2e-16 ***
+## t             2.15873    0.06117  35.289  < 2e-16 ***
+## Jan           3.60317    7.22378   0.499  0.61947    
+## Feb           2.30159    7.21834   0.319  0.75077    
+## Mar          27.42857    7.21341   3.802  0.00030 ***
+## Apr          19.12698    7.20900   2.653  0.00983 ** 
+## May          16.25397    7.20511   2.256  0.02716 *  
+## Jun          38.09524    7.20173   5.290 1.30e-06 ***
+## Jul          60.93651    7.19887   8.465 2.30e-12 ***
+## Aug          57.92063    7.19653   8.048 1.36e-11 ***
+## Sep          30.61905    7.19471   4.256 6.26e-05 ***
+## Oct           3.31746    7.19341   0.461  0.64608    
+## Nov         -22.12698    7.19263  -3.076  0.00298 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 13.46 on 71 degrees of freedom
+## Multiple R-squared:  0.9551, Adjusted R-squared:  0.9475 
+## F-statistic: 125.8 on 12 and 71 DF,  p-value: < 2.2e-16
+Add_sea_Linear_pred<-data.frame(predict(Add_sea_Linear_model,interval='predict',newdata=test))
+rmse_Add_sea_Linear<-sqrt(mean((test$Passengers-Add_sea_Linear_pred$fit)^2,na.rm=T))
+rmse_Add_sea_Linear # 35.34896 and Adjusted R2 - 94.75%
+## [1] 35.34896
+######################## Additive Seasonality with Quadratic #################
+
+Add_sea_Quad_model<-lm(Passengers~t+t_square+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov,data=train)
+summary(Add_sea_Quad_model)
+## 
+## Call:
+## lm(formula = Passengers ~ t + t_square + Jan + Feb + Mar + Apr + 
+##     May + Jun + Jul + Aug + Sep + Oct + Nov, data = train)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -32.297  -7.694   0.392   7.735  40.922 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)  95.003657   6.438877  14.755  < 2e-16 ***
+## t             1.507479   0.233462   6.457 1.20e-08 ***
+## t_square      0.007662   0.002660   2.881 0.005263 ** 
+## Jan           3.603175   6.878882   0.524 0.602071    
+## Feb           2.378205   6.873752   0.346 0.730393    
+## Mar          27.566483   6.869176   4.013 0.000148 ***
+## Apr          19.310867   6.865106   2.813 0.006367 ** 
+## May          16.468498   6.861505   2.400 0.019052 *  
+## Jun          38.325091   6.858349   5.588 4.11e-07 ***
+## Jul          61.166361   6.855628   8.922 3.67e-13 ***
+## Aug          58.135165   6.853340   8.483 2.36e-12 ***
+## Sep          30.802930   6.851500   4.496 2.68e-05 ***
+## Oct           3.455372   6.850131   0.504 0.615547    
+## Nov         -22.050366   6.849272  -3.219 0.001949 ** 
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 12.81 on 70 degrees of freedom
+## Multiple R-squared:  0.9598, Adjusted R-squared:  0.9524 
+## F-statistic: 128.7 on 13 and 70 DF,  p-value: < 2.2e-16
+Add_sea_Quad_pred<-data.frame(predict(Add_sea_Quad_model,interval='predict',newdata=test))
+rmse_Add_sea_Quad<-sqrt(mean((test$Passengers-Add_sea_Quad_pred$fit)^2,na.rm=T))
+rmse_Add_sea_Quad # 26.36082 and Adjusted R2 - 95.24%
+## [1] 26.36082
+######################## Multiplicative Seasonality #########################
+
+multi_sea_model<-lm(log_Passenger~Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov,data = train)
+summary(multi_sea_model)
+## 
+## Call:
+## lm(formula = log_Passenger ~ Jan + Feb + Mar + Apr + May + Jun + 
+##     Jul + Aug + Sep + Oct + Nov, data = train)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.43858 -0.28085  0.04875  0.22435  0.46174 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)  5.208117   0.111153  46.856   <2e-16 ***
+## Jan         -0.112831   0.157194  -0.718    0.475    
+## Feb         -0.097238   0.157194  -0.619    0.538    
+## Mar          0.047126   0.157194   0.300    0.765    
+## Apr          0.011394   0.157194   0.072    0.942    
+## May          0.001676   0.157194   0.011    0.992    
+## Jun          0.120037   0.157194   0.764    0.448    
+## Jul          0.227301   0.157194   1.446    0.153    
+## Aug          0.227676   0.157194   1.448    0.152    
+## Sep          0.120513   0.157194   0.767    0.446    
+## Oct         -0.006967   0.157194  -0.044    0.965    
+## Nov         -0.138701   0.157194  -0.882    0.381    
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.2941 on 72 degrees of freedom
+## Multiple R-squared:  0.1548, Adjusted R-squared:  0.02568 
+## F-statistic: 1.199 on 11 and 72 DF,  p-value: 0.3036
+multi_sea_pred<-data.frame(predict(multi_sea_model,newdata=test,interval='predict'))
+rmse_multi_sea<-sqrt(mean((test$Passengers-exp(multi_sea_pred$fit))^2,na.rm = T))
+rmse_multi_sea # 140.0632
+## [1] 140.0632
+######################## Multiplicative Seasonality Linear trend ##########################
+
+multi_add_sea_model<-lm(log_Passenger~t+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov,data = train)
+summary(multi_add_sea_model) 
+## 
+## Call:
+## lm(formula = log_Passenger ~ t + Jan + Feb + Mar + Apr + May + 
+##     Jun + Jul + Aug + Sep + Oct + Nov, data = train)
+## 
+## Residuals:
+##       Min        1Q    Median        3Q       Max 
+## -0.142864 -0.031286  0.000823  0.031275  0.105860 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(>|t|)    
+## (Intercept)  4.6712626  0.0216310 215.952  < 2e-16 ***
+## t            0.0111845  0.0002253  49.637  < 2e-16 ***
+## Jan          0.0101977  0.0266082   0.383 0.702676    
+## Feb          0.0146065  0.0265881   0.549 0.584480    
+## Mar          0.1477860  0.0265700   5.562 4.41e-07 ***
+## Apr          0.1008701  0.0265537   3.799 0.000304 ***
+## May          0.0799669  0.0265394   3.013 0.003582 ** 
+## Jun          0.1871442  0.0265270   7.055 9.31e-10 ***
+## Jul          0.2832229  0.0265164  10.681  < 2e-16 ***
+## Aug          0.2724138  0.0265078  10.277 1.08e-15 ***
+## Sep          0.1540663  0.0265011   5.814 1.61e-07 ***
+## Oct          0.0154017  0.0264963   0.581 0.562893    
+## Nov         -0.1275166  0.0264934  -4.813 8.11e-06 ***
+## ---
+## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+## 
+## Residual standard error: 0.04956 on 71 degrees of freedom
+## Multiple R-squared:  0.9763, Adjusted R-squared:  0.9723 
+## F-statistic:   244 on 12 and 71 DF,  p-value: < 2.2e-16
+multi_add_sea_pred<-data.frame(predict(multi_add_sea_model,newdata=test,interval='predict'))
+rmse_multi_add_sea<-sqrt(mean((test$Passengers-exp(multi_add_sea_pred$fit))^2,na.rm = T))
+rmse_multi_add_sea # 10.51917 and Adjusted R2 - 97.23%
+## [1] 10.51917
+# Preparing table on model and it's RMSE values 
+
+table_rmse<-data.frame(c("rmse_linear","rmse_expo","rmse_Quad","rmse_sea_add","rmse_Add_sea_Quad","rmse_multi_sea","rmse_multi_add_sea"),c(rmse_linear,rmse_expo,rmse_Quad,rmse_sea_add,rmse_Add_sea_Quad,rmse_multi_sea,rmse_multi_add_sea))
+View(table_rmse)
+colnames(table_rmse)<-c("model","RMSE")
+View(table_rmse)
+
+# Multiplicative Seasonality Linear trend  has least RMSE value
+
+new_model<-lm(log_Passenger~t+Jan+Feb+Mar+Apr+May+Jun+Jul+Aug+Sep+Oct+Nov,data = AirlinesData)
+new_model_pred<-data.frame(predict(new_model,newdata=AirlinesData,interval='predict'))
+new_model_fin <- exp(new_model$fitted.values)
+
+View(new_model_fin)
+
+pred_res<- predict(arima(log_Passenger,order=c(1,0,0)),n.ahead = 12)
+Month <- as.data.frame(Airlines$Month)
+
+Final <- as.data.frame(cbind(Month,AirlinesData$Passengers,new_model_fin))
+colnames(Final) <-c("Month","Passengers","New_Pred_Value")
+Final <- as.data.frame(Final)
+View(Final)
+
+# plot(Final$new_model_fin,type="o")
+
+
+
+
+
+
+
+Python codes=
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import matplotlib.pylab as plt
+%matplotlib inline
+from matplotlib.pylab import rcParams
+rcParams['figure.figsize'] = 10, 6
+
+dataset = pd.read_csv("../input/AirPassengers.csv")
+# Parse strings to datetime type
+dataset['Month'] = pd.to_datetime(dataset['Month'], infer_datetime_format=True)
+indexedDataset = dataset.set_index(['Month'])
+
+from datetime import datetime
+indexedDataset['1949-03']
+indexedDataset['1949-03':'1949-06']
+indexedDataset['1949']
+#Passengers
+Month	
+1949-01-01	112
+1949-02-01	118
+1949-03-01	132
+1949-04-01	129
+1949-05-01	121
+1949-06-01	135
+1949-07-01	148
+1949-08-01	148
+1949-09-01	136
+1949-10-01	119
+1949-11-01	104
+1949-12-01	118
+plt.xlabel("Date")
+plt.ylabel("Number of air passengers")
+plt.plot(indexedDataset)
+[<matplotlib.lines.Line2D at 0x7fbc5e4dbf60>]
+
+#Determing rolling statistics
+rolmean = indexedDataset.rolling(window=12).mean()
+rolstd = indexedDataset.rolling(window=12).std()
+print(rolmean, rolstd)
+            #Passengers
+Month                  
+1949-01-01          NaN
+1949-02-01          NaN
+1949-03-01          NaN
+1949-04-01          NaN
+1949-05-01          NaN
+1949-06-01          NaN
+1949-07-01          NaN
+1949-08-01          NaN
+1949-09-01          NaN
+1949-10-01          NaN
+1949-11-01          NaN
+1949-12-01   126.666667
+1950-01-01   126.916667
+1950-02-01   127.583333
+1950-03-01   128.333333
+1950-04-01   128.833333
+1950-05-01   129.166667
+1950-06-01   130.333333
+1950-07-01   132.166667
+1950-08-01   134.000000
+1950-09-01   135.833333
+1950-10-01   137.000000
+1950-11-01   137.833333
+1950-12-01   139.666667
+1951-01-01   142.166667
+1951-02-01   144.166667
+1951-03-01   147.250000
+1951-04-01   149.583333
+1951-05-01   153.500000
+1951-06-01   155.916667
+...                 ...
+1958-07-01   376.333333
+1958-08-01   379.500000
+1958-09-01   379.500000
+1958-10-01   380.500000
+1958-11-01   380.916667
+1958-12-01   381.000000
+1959-01-01   382.666667
+1959-02-01   384.666667
+1959-03-01   388.333333
+1959-04-01   392.333333
+1959-05-01   397.083333
+1959-06-01   400.166667
+1959-07-01   404.916667
+1959-08-01   409.416667
+1959-09-01   414.333333
+1959-10-01   418.333333
+1959-11-01   422.666667
+1959-12-01   428.333333
+1960-01-01   433.083333
+1960-02-01   437.166667
+1960-03-01   438.250000
+1960-04-01   443.666667
+1960-05-01   448.000000
+1960-06-01   453.250000
+1960-07-01   459.416667
+1960-08-01   463.333333
+1960-09-01   467.083333
+1960-10-01   471.583333
+1960-11-01   473.916667
+1960-12-01   476.166667
+
+[144 rows x 1 columns]             #Passengers
+Month                  
+1949-01-01          NaN
+1949-02-01          NaN
+1949-03-01          NaN
+1949-04-01          NaN
+1949-05-01          NaN
+1949-06-01          NaN
+1949-07-01          NaN
+1949-08-01          NaN
+1949-09-01          NaN
+1949-10-01          NaN
+1949-11-01          NaN
+1949-12-01    13.720147
+1950-01-01    13.453342
+1950-02-01    13.166475
+1950-03-01    13.686977
+1950-04-01    13.822467
+1950-05-01    13.663710
+1950-06-01    14.760718
+1950-07-01    18.135016
+1950-08-01    20.797727
+1950-09-01    21.928949
+1950-10-01    21.315807
+1950-11-01    20.067311
+1950-12-01    19.070841
+1951-01-01    17.439940
+1951-02-01    16.781122
+1951-03-01    19.349066
+1951-04-01    19.425655
+1951-05-01    18.744696
+1951-06-01    19.942911
+...                 ...
+1958-07-01    59.590013
+1958-08-01    65.557054
+1958-09-01    65.557054
+1958-10-01    65.106207
+1958-11-01    64.593074
+1958-12-01    64.530472
+1959-01-01    63.627229
+1959-02-01    61.759553
+1959-03-01    61.597422
+1959-04-01    60.284678
+1959-05-01    60.008270
+1959-06-01    63.009138
+1959-07-01    71.987951
+1959-08-01    80.049369
+1959-09-01    81.485451
+1959-10-01    79.680422
+1959-11-01    74.498729
+1959-12-01    69.830097
+1960-01-01    66.624399
+1960-02-01    61.866180
+1960-03-01    61.382741
+1960-04-01    60.171472
+1960-05-01    60.184565
+1960-06-01    65.021849
+1960-07-01    77.194510
+1960-08-01    83.630500
+1960-09-01    84.617276
+1960-10-01    82.541954
+1960-11-01    79.502382
+1960-12-01    77.737125
+
+[144 rows x 1 columns]
+#Plot rolling statistics:
+orig = plt.plot(indexedDataset, color='blue',label='Original')
+mean = plt.plot(rolmean, color='red', label='Rolling Mean')
+std = plt.plot(rolstd, color='black', label = 'Rolling Std')
+plt.legend(loc='best')
+plt.title('Rolling Mean & Standard Deviation')
+plt.show(block=False)
+    
+
+#Perform Dickey-Fuller test:
+from statsmodels.tsa.stattools import adfuller
+
+print ('Results of Dickey-Fuller Test:')
+dftest = adfuller(indexedDataset['#Passengers'], autolag='AIC')
+dfoutput = pd.Series(dftest[0:4], index=['Test Statistic','p-value','#Lags Used','Number of Observations Used'])
+for key,value in dftest[4].items():
+    dfoutput['Critical Value (%s)'%key] = value
+print(dfoutput)
+Results of Dickey-Fuller Test:
+Test Statistic                   0.815369
+p-value                          0.991880
+#Lags Used                      13.000000
+Number of Observations Used    130.000000
+Critical Value (1%)             -3.481682
+Critical Value (5%)             -2.884042
+Critical Value (10%)            -2.578770
+dtype: float64
+# Estimating trend
+indexedDataset_logScale = np.log(indexedDataset)
+plt.plot(indexedDataset_logScale)
+[<matplotlib.lines.Line2D at 0x7fbc5427df98>]
+
+movingAverage = indexedDataset_logScale.rolling(window=12).mean()
+movingSTD = indexedDataset_logScale.rolling(window=12).std()
+plt.plot(indexedDataset_logScale)
+plt.plot(movingAverage, color='red')
+[<matplotlib.lines.Line2D at 0x7fbc54236978>]
+
+# Get the difference between the moving average and the actual number of passengers
+datasetLogScaleMinusMovingAverage = indexedDataset_logScale - movingAverage
+datasetLogScaleMinusMovingAverage.head(12)
+#Remove Nan Values
+datasetLogScaleMinusMovingAverage.dropna(inplace=True)
+datasetLogScaleMinusMovingAverage.head(10)
+#Passengers
+Month	
+1949-12-01	-0.065494
+1950-01-01	-0.093449
+1950-02-01	-0.007566
+1950-03-01	0.099416
+1950-04-01	0.052142
+1950-05-01	-0.027529
+1950-06-01	0.139881
+1950-07-01	0.260184
+1950-08-01	0.248635
+1950-09-01	0.162937
+from statsmodels.tsa.stattools import adfuller
+def test_stationarity(timeseries):
+    
+    #Determing rolling statistics
+    movingAverage = timeseries.rolling(window=12).mean()
+    movingSTD = timeseries.rolling(window=12).std()
+
+    #Plot rolling statistics:
+    orig = plt.plot(timeseries, color='blue',label='Original')
+    mean = plt.plot(movingAverage, color='red', label='Rolling Mean')
+    std = plt.plot(movingSTD, color='black', label = 'Rolling Std')
+    plt.legend(loc='best')
+    plt.title('Rolling Mean & Standard Deviation')
+    plt.show(block=False)
+    
+    #Perform Dickey-Fuller test:
+    print('Results of Dickey-Fuller Test:')
+    dftest = adfuller(timeseries['#Passengers'], autolag='AIC')
+    dfoutput = pd.Series(dftest[0:4], index=['Test Statistic','p-value','#Lags Used','Number of Observations Used'])
+    for key,value in dftest[4].items():
+        dfoutput['Critical Value (%s)'%key] = value
+    print(dfoutput)
+test_stationarity(datasetLogScaleMinusMovingAverage)
+
+Results of Dickey-Fuller Test:
+Test Statistic                  -3.162908
+p-value                          0.022235
+#Lags Used                      13.000000
+Number of Observations Used    119.000000
+Critical Value (1%)             -3.486535
+Critical Value (5%)             -2.886151
+Critical Value (10%)            -2.579896
+dtype: float64
+exponentialDecayWeightedAverage = indexedDataset_logScale.ewm(halflife=12, min_periods=0, adjust=True).mean()
+plt.plot(indexedDataset_logScale)
+plt.plot(exponentialDecayWeightedAverage, color='red')
+[<matplotlib.lines.Line2D at 0x7fbc54134ef0>]
+
+datasetLogScaleMinusMovingExponentialDecayAverage = indexedDataset_logScale - exponentialDecayWeightedAverage
+test_stationarity(datasetLogScaleMinusMovingExponentialDecayAverage)
+
+Results of Dickey-Fuller Test:
+Test Statistic                  -3.601262
+p-value                          0.005737
+#Lags Used                      13.000000
+Number of Observations Used    130.000000
+Critical Value (1%)             -3.481682
+Critical Value (5%)             -2.884042
+Critical Value (10%)            -2.578770
+dtype: float64
+datasetLogDiffShifting = indexedDataset_logScale - indexedDataset_logScale.shift()
+plt.plot(datasetLogDiffShifting)
+[<matplotlib.lines.Line2D at 0x7fbc446d8b00>]
+
+datasetLogDiffShifting.dropna(inplace=True)
+test_stationarity(datasetLogDiffShifting)
+
+Results of Dickey-Fuller Test:
+Test Statistic                  -2.717131
+p-value                          0.071121
+#Lags Used                      14.000000
+Number of Observations Used    128.000000
+Critical Value (1%)             -3.482501
+Critical Value (5%)             -2.884398
+Critical Value (10%)            -2.578960
+dtype: float64
+from statsmodels.tsa.seasonal import seasonal_decompose
+decomposition = seasonal_decompose(indexedDataset_logScale)
+
+trend = decomposition.trend
+seasonal = decomposition.seasonal
+residual = decomposition.resid
+
+plt.subplot(411)
+plt.plot(indexedDataset_logScale, label='Original')
+plt.legend(loc='best')
+plt.subplot(412)
+plt.plot(trend, label='Trend')
+plt.legend(loc='best')
+plt.subplot(413)
+plt.plot(seasonal,label='Seasonality')
+plt.legend(loc='best')
+plt.subplot(414)
+plt.plot(residual, label='Residuals')
+plt.legend(loc='best')
+plt.tight_layout()
+
+decomposedLogData = residual
+decomposedLogData.dropna(inplace=True)
+test_stationarity(decomposedLogData)
+
+Results of Dickey-Fuller Test:
+Test Statistic                -6.332387e+00
+p-value                        2.885059e-08
+#Lags Used                     9.000000e+00
+Number of Observations Used    1.220000e+02
+Critical Value (1%)           -3.485122e+00
+Critical Value (5%)           -2.885538e+00
+Critical Value (10%)          -2.579569e+00
+dtype: float64
+#ACF and PACF plots:
+from statsmodels.tsa.stattools import acf, pacf
+
+lag_acf = acf(datasetLogDiffShifting, nlags=20)
+lag_pacf = pacf(datasetLogDiffShifting, nlags=20, method='ols')
+
+
+#Plot ACF: 
+plt.subplot(121) 
+plt.plot(lag_acf)
+plt.axhline(y=0,linestyle='--',color='gray')
+plt.axhline(y=-1.96/np.sqrt(len(datasetLogDiffShifting)),linestyle='--',color='gray')
+plt.axhline(y=1.96/np.sqrt(len(datasetLogDiffShifting)),linestyle='--',color='gray')
+plt.title('Autocorrelation Function')
+
+#Plot PACF:
+plt.subplot(122)
+plt.plot(lag_pacf)
+plt.axhline(y=0,linestyle='--',color='gray')
+plt.axhline(y=-1.96/np.sqrt(len(datasetLogDiffShifting)),linestyle='--',color='gray')
+plt.axhline(y=1.96/np.sqrt(len(datasetLogDiffShifting)),linestyle='--',color='gray')
+plt.title('Partial Autocorrelation Function')
+plt.tight_layout()
+
+from statsmodels.tsa.arima_model import ARIMA
+
+#AR MODEL
+model = ARIMA(indexedDataset_logScale, order=(2, 1, 0))  
+results_AR = model.fit(disp=-1)  
+plt.plot(datasetLogDiffShifting)
+plt.plot(results_AR.fittedvalues, color='red')
+plt.title('RSS: %.4f'% sum((results_AR.fittedvalues-datasetLogDiffShifting["#Passengers"])**2))
+print('Plotting AR model')
+Plotting AR model
+
+#MA MODEL
+model = ARIMA(indexedDataset_logScale, order=(0, 1, 2))  
+results_MA = model.fit(disp=-1)  
+plt.plot(datasetLogDiffShifting)
+plt.plot(results_MA.fittedvalues, color='red')
+plt.title('RSS: %.4f'% sum((results_MA.fittedvalues-datasetLogDiffShifting["#Passengers"])**2))
+print('Plotting AR model')
+Plotting AR model
+
+model = ARIMA(indexedDataset_logScale, order=(2, 1, 2))  
+results_ARIMA = model.fit(disp=-1)  
+plt.plot(datasetLogDiffShifting)
+plt.plot(results_ARIMA.fittedvalues, color='red')
+plt.title('RSS: %.4f'% sum((results_ARIMA.fittedvalues-datasetLogDiffShifting["#Passengers"])**2))
+<matplotlib.text.Text at 0x7fbc43983f98>
+
+predictions_ARIMA_diff = pd.Series(results_ARIMA.fittedvalues, copy=True)
+print (predictions_ARIMA_diff.head())
+Month
+1949-02-01    0.009580
+1949-03-01    0.017491
+1949-04-01    0.027670
+1949-05-01   -0.004521
+1949-06-01   -0.023890
+dtype: float64
+#Convert to cumulative sum
+predictions_ARIMA_diff_cumsum = predictions_ARIMA_diff.cumsum()
+print (predictions_ARIMA_diff_cumsum.head())
+Month
+1949-02-01    0.009580
+1949-03-01    0.027071
+1949-04-01    0.054742
+1949-05-01    0.050221
+1949-06-01    0.026331
+dtype: float64
+#predictions_ARIMA_log = pd.Series(ts_log.ix[0], index=ts_log.index)
+#predictions_ARIMA_log = predictions_ARIMA_log.add(predictions_ARIMA_diff_cumsum,fill_value=0)
+#predictions_ARIMA_log.head()
+
+predictions_ARIMA_log = pd.Series(indexedDataset_logScale['#Passengers'].ix[0], index=indexedDataset_logScale['#Passengers'].index)
+predictions_ARIMA_log = predictions_ARIMA_log.add(predictions_ARIMA_diff_cumsum,fill_value=0)
+predictions_ARIMA_log.head()
+Month
+1949-01-01    4.718499
+1949-02-01    4.728079
+1949-03-01    4.745570
+1949-04-01    4.773241
+1949-05-01    4.768720
+dtype: float64
+predictions_ARIMA = np.exp(predictions_ARIMA_log)
+plt.plot(indexedDataset)
+plt.plot(predictions_ARIMA)
+plt.title('RMSE: %.4f'% np.sqrt(sum((predictions_ARIMA-indexedDataset["#Passengers"])**2)/len(indexedDataset["#Passengers"])))
+<matplotlib.text.Text at 0x7fbc438a94a8>

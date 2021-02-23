@@ -1,0 +1,54 @@
+In this article we list down the most widely used time-series forecasting methods which can be used in Python with just a single line of code:
+
+Autoregression (AR)
+The autoregression (AR) method models as a linear function of the observations at prior time steps.
+
+The notation for the model involves specifying the order of the model p as a parameter to the AR function.
+
+from statsmodel.tsa.ar_model import AR
+
+Autoregressive Moving Average (ARMA)
+The (ARMA) method combines both Autoregression (AR) and Moving Average (MA) models.
+
+from statsmodel.tsa.arima_model import ARMA
+
+Autoregressive Integrated Moving Average (ARIMA)
+(ARIMA) method combines both Autoregression (AR) and Moving Average (MA) models as well as a differencing pre-processing step of the sequence to make the sequence stationary, called integration
+
+from statsmodel.tsa.arima_model import ARIMA
+
+Seasonal Autoregressive Integrated Moving-Average (SARIMA)
+The Seasonal Autoregressive Integrated Moving Average (SARIMA) method models the next step in the sequence as a linear function of the differenced observations, errors, differenced seasonal observations, and seasonal errors at prior time steps.
+
+It combines the ARIMA model with the ability to perform the same autoregression, differencing, and moving average modeling at the seasonal level.
+
+from statsmodel.tsa.statespace.sarimax import SARIMAX
+
+SEE ALSO
+
+DEVELOPERS CORNER
+How I Created A ML Model That Identifies Hand Gestures
+Seasonal Autoregressive Integrated Moving-Average with Exogenous Regressors (SARIMAX)
+The Seasonal Autoregressive Integrated Moving-Average with Exogenous Regressors (SARIMAX) is an extension of the SARIMA model that also includes the modeling of exogenous variables.
+
+The SARIMAX method can also be used to model the subsumed models with exogenous variables, such as ARX, MAX, ARMAX, and ARIMAX
+
+from statsmodel.tsa.statespace.sarimax import SARIMAX
+
+Vector Autoregression (VAR)
+The Vector Autoregression method uses an AR model. It is the generalization of AR to multiple parallel time series.
+
+from statsmodel.tsa.vector_ar.var_model import VAR
+
+Vector Autoregression Moving-Average (VARMA)
+It is the generalization of ARMA to multiple parallel time series, e.g. multivariate time series.
+
+from statsmodel.tsa.statespace.varmax import VARMAX
+
+Vector Autoregression Moving-Average with Exogenous Regressors (VARMAX)
+The Vector Autoregression Moving-Average with Exogenous Regressors (VARMAX) is an extension of the VARMA model that also includes the modeling of exogenous variables. It is a multivariate version of the ARMAX method.
+
+Holt Winter’s Exponential Smoothing (HWES)
+The Holt Winter’s Exponential Smoothing (HWES) is an exponentially weighted linear function of observations at prior time steps, taking trends and seasonality into account.
+
+from statsmodel.tsa.holtwinters import ExponentialSmoothing

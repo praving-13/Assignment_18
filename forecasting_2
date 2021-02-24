@@ -1,0 +1,106 @@
+Problem: Forecasting 2-month digital advertising spend about 2 months ahead based on 2+ years historical daily advertising spend.
+Here’s a quick look at the data file (daily ad spend from 2017–01–01 to 2019–09–23)
+Image for post
+Create training and testing datasets:
+Image for post
+Table of Contents
+Introduction
+Time Series Analysis
+What are popular stats models
+Key elements of univariate statistical time-series modeling
+2. ARIMA
+ACF and PACF plots
+SARIMA
+Case study: forecasting advertising spend with SARIMA
+3. ETS
+ETS
+Holt-Winter’s Seasonal methods
+Case study: forecasting advertising spend with Holt-Winter’s Seasonal Smoothing
+4. Compared models
+5. Closing Summary
+1.1 Time Series Analysis
+Details explained in my previous post here.
+1.2 What statistical models for time-series might we use?
+a. Univariate statistical time-series modeling (e.g., averaging and smoothing models, ARIMA models with/without seasonal terms)
+b. Multi-variate statistical time-series modeling (e.g., external regressors, VAR)
+c. Additive or component models (e.g., Facebook Prophet which covered in part I, ETS)
+d. Structural time-series modeling (e.g., Bayesian structural time series modeling, hierarchical time-series modeling).
+In this article, I will focus on explaining SARIMA and Holt-winters.
+1.3 Key Components
+We need to have our data stationarity, which means (1) constant mean (2) constant variance (3) autocovariance does not depend on time, if we would like to use statistical modeling for time-series data.
+Then what if my data doesn’t meet this statistical assumption? In other words, what does non-stationary data look like?
+Two common features behind non-stationary data are (1) trend ~ mean is not constant over time (2) seasonality ~ variance is not constant over time (3) autocovariant with itself depends on time.
+What are methods to de-trend and eliminate seasonality?
+Transformation (e.g., log, sqrt, etc)
+Smoothing (e.g., rolling average, etc)
+Difference
+Decomposition
+Polynomial Fitting (e.g., fit a regression model)
+2.1 Key terms in ARIMA Models
+Format: ARIMA(p, d, q) — (1) p: AR term (2) d: (3) q: MA term
+Image for post
+Picture is from https://www.slideshare.net/21_venkat?
+AR (autoregression) term describes the next step in the sequence as a linear function of the observations at prior time steps.
+I (integration) terms, a differencing pre-processing step of the sequence to make the sequence stationary.
+MA (moving average) term describes the next step in the sequence as a linear function of the residual errors from a mean process at prior time steps.
+The notation for the model involves specifying the order for the AR (p), I (d), and MA (q) models as parameters to an ARIMA function, e.g. ARIMA(p, d, q). An ARIMA model can also be used to develop AR, MA, and ARMA models.
+Then how do we determine p, d and q?
+2.2 ACF and PACF plot
+ACF (autocorrelation function) describes correlation between the time-series with a lagged version of itself (e.g., correlation of Y(t) with Y(t-1))
+PACF (partial autocorrelation function) provides additional correlation explained by each successive lagged term.
+Use PACF plot to determine p
+Use ACF plot to determine q
+Identifying the orders of AR and MA terms in an ARIMA model
+Notes on nonseasonal ARIMA models (pdf file) Slides on seasonal and nonseasonal ARIMA models (pdf file) Introduction to…
+people.duke.edu
+
+2.3 SARIMA
+SARIMA (seasonal autoregressive integrated moving average) combines the ARIMA model at the seasonal level.
+Format: SARIMA(p, d, q) (P, D, Q)s where s represents the seasonal period.
+2.3 Case study: forecasting advertising spend with SARIMA
+I created test_stationarity to check stationarity.
+
+The function plots the rolling mean and STD and output the p-value from doing Augmented Dickey–Fuller test.
+Check raw data:test_stationarity(df1[‘Spend’].dropna())
+Image for post
+Compared with the critical value, the time series is non-stationary.
+Let’s do a log-tranformation: df1[‘log_Spend’]=np.log(df1[‘Spend’])
+test_stationarity(df1[‘log_Spend’].diff(1).dropna())
+Image for post
+Great. The time-series is stationary at threshold of 5% with log transform.
+Let’s try first differencing: test_stationarity(df1[‘Spend’].diff(1).dropna())
+Image for post
+Very impressive. The Result is event better: the time-series is stationary at a threshold of 1% with first differencing.
+Built SARIMA model and forecast two months ad spend between 2019–07–23 and 2019–09–23
+
+Now let’s check how this model performs by calculating mse and mae from sklearn.metrics import mean_squared_error,mean_absolute_error
+Image for post
+Let’s visualize prediction:
+Image for post
+The SARIMA model is able to catch the trends and weekly seasonality but a bit off on peaks and troughs with MAE of 5813.
+3. Exponential Smoothing (ETS)
+Because time-series data is naturally random over time, we generally want to smooth the data, and for this we will use ETS, assigning less weight to past observations using an exponential method. There is a decent explanation on wiki.
+Similarly, we also would like to decompose a time series into trend (T), seasonal (S), and irregularity or error (E) components with applying ETS.
+Three common ETS types:
+Linear: double exponential smoothing:
+Additive: triple exponential smoothing
+Multiplicative: also triple exponential smoothing
+Image for post
+from: https://www.stat.berkeley.edu/~arturof/Teaching/STAT248/lab10_part1.html
+3.2 Holt-Winters’ seasonal methods
+Hot-Winters’ seasonal methods are types of triple exponential smoothing. It has three key parts: (1) a level (2) a trend (3) seasonal component for both Holt-Winters’ additive method and Holt-Winters’ multiplicative method.
+3.3 Case study: forecasting advertising spend with Holt-Winter’s Seasonal Smoothing
+Built Hot-Winters’ additive model and forecast two months ad spend between 2019–07–23 and 2019–09–23
+
+Image for post
+Calculated mse and mae via from sklearn.metrics import mean_squared_error,mean_absolute_error
+Image for post
+Image for post
+The H-W model is able to catch the trends and weekly seasonality but a bit off on peaks and troughs with MAE of 6055.
+4. Compare the two models
+Let’s visualize the prediction from the two models in the same plot.
+Image for post
+From the plot, we can tell SARIMA model performs slightly better than Holt_Winter model with both lower MSE and MAE. Even though both models are unable to perfectly catch the peaks and troughs, they are still useful to the business in this case. The average monthly ad spend is $2MM+ based on the data. However, the MAE is around 6000 based on the two models. In other words, the two-month ad spend forecast will be off around $6K for a business with $2MM average monthly ad spend. This is a pretty good forecasting!
+5. Closing Summary
+In this article, univariate forecasting methods perform good on this ad spend data. But it’s not easy to combine/incorporate new signals, e.g. events, weathers, with these methods. These statistical methods also are very sensitive to missing data and usually would not do well forecasting a long period.
+In the next article, I will show how to use deep learning to forecast time-series on the same dataset!
